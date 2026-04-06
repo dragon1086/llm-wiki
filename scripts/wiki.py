@@ -83,6 +83,29 @@ def _run_single(run_ingest_fn, source_file: str, debug: bool = False):
         sys.exit(1)
 
 
+# ── query ─────────────────────────────────────────────────────────────────────
+
+@cli.command()
+@click.argument("question")
+@click.option("--slides", "output_format", flag_value="slides", help="Marp 슬라이드로 출력")
+@click.option("--image", "output_format", flag_value="image", help="matplotlib 이미지 코드로 출력")
+@click.option("--text", "output_format", flag_value="text", default=True, help="텍스트 마크다운으로 출력 (기본)")
+@click.option("--debug", is_flag=True, help="raw Claude 응답을 /tmp/llm-wiki-debug.txt에 저장")
+def query(question: str, output_format: str, debug: bool):
+    """wiki를 탐색하여 질문에 답합니다."""
+    from query import run_query  # 지연 import
+
+    try:
+        result = run_query(question, output_format=output_format, debug=debug)
+        click.echo(f"\n✓ 답변 저장: {', '.join(result['output_files'])}")
+        if result["findings_created"]:
+            click.echo(f"✓ Findings 파일링: {result['findings_created']}개")
+        click.echo(f"  로그: {result['log_message']}")
+    except RuntimeError as e:
+        click.echo(f"✗ 오류: {e}", err=True)
+        sys.exit(1)
+
+
 # ── status ────────────────────────────────────────────────────────────────────
 
 @cli.command()

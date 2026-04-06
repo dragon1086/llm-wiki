@@ -4,12 +4,11 @@ raw/ 소스 파일 → claude CLI → wiki 페이지 생성/갱신
 """
 
 import re
-import subprocess
 from pathlib import Path
 
 from utils import (
     append_log,
-    get_claude_bin,
+    call_claude,
     list_wiki_pages,
     read_agents_md,
     update_index,
@@ -77,43 +76,6 @@ def build_ingest_prompt(
 
 지금 `===FILE:` 로 시작하는 출력을 즉시 생성하라.
 """
-
-
-# ── Claude CLI 호출 ───────────────────────────────────────────────────────────
-
-def call_claude(prompt: str, timeout: int = 300, debug: bool = False) -> str:
-    """
-    claude CLI subprocess 호출.
-    - Popen + communicate(timeout) 패턴으로 고아 프로세스 방지
-    - timeout 초과 시 명시적 kill 후 예외 발생
-    """
-    claude_bin = get_claude_bin()
-    proc = subprocess.Popen(
-        [claude_bin, "--dangerously-skip-permissions", "-p", prompt],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-    try:
-        stdout, stderr = proc.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        proc.communicate()  # 파이프 비우기 (좀비 방지)
-        raise RuntimeError(
-            f"claude CLI가 {timeout}초 내에 응답하지 않아 종료했습니다."
-        )
-
-    if debug:
-        debug_path = Path("/tmp/llm-wiki-debug.txt")
-        debug_path.write_text(f"=== STDOUT ===\n{stdout}\n=== STDERR ===\n{stderr}", encoding="utf-8")
-        print(f"[debug] raw 응답 저장: {debug_path}")
-
-    if proc.returncode != 0:
-        raise RuntimeError(
-            f"claude CLI 오류 (returncode={proc.returncode}):\n{stderr}"
-        )
-
-    return stdout
 
 
 # ── 응답 파싱 ─────────────────────────────────────────────────────────────────

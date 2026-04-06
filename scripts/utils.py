@@ -2,6 +2,7 @@
 
 import re
 import shutil
+import subprocess
 from datetime import datetime
 from pathlib import Path
 
@@ -156,7 +157,7 @@ def _increment_index_counter(index_path: Path, page_type: str) -> None:
         f.write(content)
 
 
-# ── claude CLI 확인 ──────────────────────────────────────────────────────────
+# ── claude CLI ───────────────────────────────────────────────────────────────
 
 def get_claude_bin() -> str:
     """claude 실행 파일 경로 반환. 없으면 RuntimeError."""
@@ -166,3 +167,80 @@ def get_claude_bin() -> str:
             "claude CLI를 찾을 수 없습니다. Claude Code가 설치되어 있는지 확인하세요."
         )
     return claude
+
+
+def call_claude(prompt: str, timeout: int = 300, debug: bool = False) -> str:
+    """
+    claude CLI subprocess 호출.
+    - Popen + communicate(timeout) 패턴으로 고아 프로세스 방지
+    - timeout 초과 시 명시적 kill 후 예외 발생
+    """
+    claude_bin = get_claude_bin()
+    proc = subprocess.Popen(
+        [claude_bin, "--dangerously-skip-permissions", "-p", prompt],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        stdout, stderr = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.communicate()  # 파이프 비우기 (좀비 방지)
+        raise RuntimeError(
+            f"claude CLI가 {timeout}초 내에 응답하지 않아 종료했습니다."
+        )
+
+    if debug:
+        debug_path = Path("/tmp/llm-wiki-debug.txt")
+        debug_path.write_text(
+            f"=== STDOUT ===\n{stdout}\n=== STDERR ===\n{stderr}",
+            encoding="utf-8",
+        )
+        print(f"[debug] raw 응답 저장: {debug_path}")
+
+    if proc.returncode != 0:
+        raise RuntimeError(
+            f"claude CLI 오류 (returncode={proc.returncode}):\n{stderr}"
+        )
+
+    return stdout
+
+
+# ── Wiki 페이지 읽기 ──────────────────────────────────────────────────────────
+
+_WIKILINK_PATTERN = re.compile(r"\[\[([^\]|]+?)(?:\|[^\]]+)?\]\]")
+
+
+def read_wiki_pages(slugs: list) -> dict:
+    """
+    slug 목록에 해당하는 wiki 페이지 전문 반환.
+    {slug: content} — 파일 없는 slug는 조용히 스킵.
+    """
+    w = wiki_dir()
+    subdirs = ["concepts", "entities", "summaries", "findings"]
+    result = {}
+
+    for slug in slugs:
+        for subdir in subdirs:
+            path = w / subdir / f"{slug}.md"
+            if path.exists():
+                result[slug] = path.read_text(encoding="utf-8")
+                break
+
+    return result
+
+
+def extract_slugs_from_index() -> list:
+    """index.md에서 모든 [[slug]] 추출"""
+    index_path = wiki_dir() / "index.md"
+    if not index_path.exists():
+        return []
+    content = index_path.read_text(encoding="utf-8")
+    return _WIKILINK_PATTERN.findall(content)
+
+
+def read_index_md() -> str:
+    """wiki/index.md 전문 반환"""
+    index_path = wiki_dir() / "index.md"
+    return index_path.read_text(encoding="utf-8") if index_path.exists() else ""
