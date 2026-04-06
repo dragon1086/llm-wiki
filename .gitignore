@@ -33,3 +33,4 @@ build/
 
 # OMC state (local only)
 .omc/state/
+.omc/
