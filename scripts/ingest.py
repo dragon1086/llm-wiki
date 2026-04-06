@@ -30,50 +30,58 @@ def build_ingest_prompt(
         for subdir, slugs in existing_pages.items()
     )
 
-    return f"""{agents_md}
+    return f"""## 출력 형식 (최우선 규칙)
+
+지금 즉시 `===FILE:` 로 시작하는 블록만 출력하라.
+설명, 요약, 목록, 확인 문구 등 일체의 다른 텍스트 금지.
+첫 번째 문자는 반드시 `=` 이어야 한다.
+
+형식:
+===FILE: wiki/<subdir>/<slug>.md===
+<YAML frontmatter + 최소 300자 본문>
+===END===
+===INDEX_UPDATE: <Summaries|Concepts|Entities|Findings> | <slug> | <한 줄 설명>===
+===LOG: {source_filename} → <N>개 페이지 갱신===
 
 ---
 
-## 현재 Wiki 상태 (기존 페이지 목록)
+## Wiki 스키마 (AGENTS.md)
+
+{agents_md}
+
+---
+
+## 현재 Wiki 상태
+
 {existing_summary}
 
 ---
 
-## 작업 지시
+## 처리할 소스
 
-아래 소스 문서를 처리하여 AGENTS.md의 Ingest Protocol에 따라 wiki 페이지를 생성/갱신하세요.
+파일명: {source_filename}
 
-- 기존 페이지가 있으면 sources[], last_updated 갱신 및 내용 보강 (upsert)
-- 기존 페이지가 없으면 새 페이지 생성 (create)
-- 모든 페이지에 Obsidian [[wikilink]] 삽입
-- 한 소스당 최대 {20}개 페이지
-
-**소스 파일명**: {source_filename}
-
----소스 시작---
 {source_content}
----소스 끝---
 
 ---
 
-## 응답 형식 (이 형식 외 다른 텍스트 절대 금지)
+## 지시사항
 
-각 wiki 페이지:
-===FILE: wiki/<subdir>/<slug>.md===
-<frontmatter + 본문 전체>
-===END===
+위 소스를 처리하여 wiki 페이지를 생성/갱신하라:
+1. summaries/ 에 소스 요약 1개 생성
+2. 언급된 entity마다 entities/ 페이지 생성/갱신
+3. 언급된 concept마다 concepts/ 페이지 생성/갱신
+4. 모든 페이지에 [[wikilink]] 삽입
+5. 각 페이지 본문 최소 300자
+6. 기존 페이지(위 목록 참조)는 upsert (내용 보강)
 
-index 업데이트 (신규 페이지마다):
-===INDEX_UPDATE: <Summaries|Concepts|Entities|Findings> | <slug> | <한 줄 설명>===
-
-로그 메시지 (마지막에 한 번):
-===LOG: {source_filename} → <N>개 페이지 갱신===
+지금 `===FILE:` 로 시작하는 출력을 즉시 생성하라.
 """
 
 
 # ── Claude CLI 호출 ───────────────────────────────────────────────────────────
 
-def call_claude(prompt: str, timeout: int = 300) -> str:
+def call_claude(prompt: str, timeout: int = 300, debug: bool = False) -> str:
     """
     claude CLI subprocess 호출.
     - Popen + communicate(timeout) 패턴으로 고아 프로세스 방지
@@ -94,6 +102,11 @@ def call_claude(prompt: str, timeout: int = 300) -> str:
         raise RuntimeError(
             f"claude CLI가 {timeout}초 내에 응답하지 않아 종료했습니다."
         )
+
+    if debug:
+        debug_path = Path("/tmp/llm-wiki-debug.txt")
+        debug_path.write_text(f"=== STDOUT ===\n{stdout}\n=== STDERR ===\n{stderr}", encoding="utf-8")
+        print(f"[debug] raw 응답 저장: {debug_path}")
 
     if proc.returncode != 0:
         raise RuntimeError(
@@ -170,7 +183,7 @@ def write_pages(pages: list[dict]) -> tuple[int, int]:
 
 # ── 메인 오케스트레이터 ───────────────────────────────────────────────────────
 
-def run_ingest(source_file: str) -> dict:
+def run_ingest(source_file: str, debug: bool = False) -> dict:
     """
     단일 소스 파일 ingest.
     반환: {source, pages_created, pages_updated, log_message}
@@ -198,7 +211,7 @@ def run_ingest(source_file: str) -> dict:
     )
 
     print(f"[ingest] {source_filename} 처리 중... (claude CLI 호출)")
-    raw_output = call_claude(prompt)
+    raw_output = call_claude(prompt, debug=debug)
 
     parsed = parse_claude_output(raw_output)
 

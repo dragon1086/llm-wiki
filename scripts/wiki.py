@@ -35,7 +35,8 @@ def cli():
 @cli.command()
 @click.argument("source_file", required=False)
 @click.option("--all", "ingest_all", is_flag=True, help="raw/ 미처리 파일 전체 ingest")
-def ingest(source_file: Optional[str], ingest_all: bool):
+@click.option("--debug", is_flag=True, help="raw Claude 응답을 /tmp/llm-wiki-debug.txt에 저장")
+def ingest(source_file: Optional[str], ingest_all: bool, debug: bool):
     """소스 파일을 wiki로 컴파일합니다."""
     from ingest import run_ingest  # 지연 import (CLI 응답성 유지)
 
@@ -50,16 +51,15 @@ def ingest(source_file: Optional[str], ingest_all: bool):
         click.echo(f"[ingest --all] {len(pending)}개 파일 처리 시작...")
         for i, f in enumerate(pending, 1):
             click.echo(f"\n[{i}/{len(pending)}] {f.name}")
-            _run_single(run_ingest, str(f))
+            _run_single(run_ingest, str(f), debug=debug)
 
     elif source_file:
-        # raw/ 상대경로 처리: raw/file.md → vault/raw/file.md
         path = Path(source_file)
         if not path.is_absolute() and not path.exists():
             candidate = vault_path() / source_file
             if candidate.exists():
                 path = candidate
-        _run_single(run_ingest, str(path))
+        _run_single(run_ingest, str(path), debug=debug)
 
     else:
         click.echo("파일을 지정하거나 --all 플래그를 사용하세요.", err=True)
@@ -67,9 +67,9 @@ def ingest(source_file: Optional[str], ingest_all: bool):
         sys.exit(1)
 
 
-def _run_single(run_ingest_fn, source_file: str):
+def _run_single(run_ingest_fn, source_file: str, debug: bool = False):
     try:
-        result = run_ingest_fn(source_file)
+        result = run_ingest_fn(source_file, debug=debug)
         click.echo(
             f"✓ {result['source']} — "
             f"생성 {result['pages_created']}개, "
