@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from utils import (
     is_ingested,
     list_raw_files,
+    raw_dir,
     vault_path,
     wiki_dir,
 )
@@ -88,7 +89,8 @@ def _run_single(run_ingest_fn, source_file: str, debug: bool = False):
 @cli.command()
 @click.argument("question")
 @click.option("--slides", "output_format", flag_value="slides", help="Marp 슬라이드로 출력")
-@click.option("--image", "output_format", flag_value="image", help="matplotlib 이미지 코드로 출력")
+@click.option("--diagram", "output_format", flag_value="diagram", help="Mermaid 다이어그램으로 출력")
+@click.option("--chart", "output_format", flag_value="chart", help="matplotlib 차트 코드 생성 + PNG 저장")
 @click.option("--text", "output_format", flag_value="text", default=True, help="텍스트 마크다운으로 출력 (기본)")
 @click.option("--debug", is_flag=True, help="raw Claude 응답을 /tmp/llm-wiki-debug.txt에 저장")
 def query(question: str, output_format: str, debug: bool):
@@ -103,6 +105,61 @@ def query(question: str, output_format: str, debug: bool):
         click.echo(f"  로그: {result['log_message']}")
     except RuntimeError as e:
         click.echo(f"✗ 오류: {e}", err=True)
+        sys.exit(1)
+
+
+# ── watch ─────────────────────────────────────────────────────────────────────
+
+@cli.command()
+@click.option("--debug", is_flag=True, help="raw Claude 응답을 /tmp/llm-wiki-debug.txt에 저장")
+def watch(debug: bool):
+    """raw/ 폴더를 감시하여 새 파일 저장 시 자동 ingest합니다."""
+    import time
+    from watchdog.observers import Observer
+    from watchdog.events import FileSystemEventHandler
+    from ingest import run_ingest
+
+    raw = raw_dir()
+
+    class RawHandler(FileSystemEventHandler):
+        def on_created(self, event):
+            if event.is_directory:
+                return
+            path = Path(event.src_path)
+            if path.suffix != ".md":
+                return
+            # 잠깐 대기 — 파일 쓰기 완료 보장
+            time.sleep(1)
+            click.echo(f"\n[watch] 새 파일 감지: {path.name}")
+            _run_single(run_ingest, str(path), debug=debug)
+
+    observer = Observer()
+    observer.schedule(RawHandler(), str(raw), recursive=False)
+    observer.start()
+    click.echo(f"[watch] 감시 시작: {raw}")
+    click.echo("  새 .md 파일이 raw/ 에 저장되면 자동으로 ingest됩니다.")
+    click.echo("  종료: Ctrl+C\n")
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+    observer.join()
+    click.echo("\n[watch] 종료")
+
+
+# ── lint ──────────────────────────────────────────────────────────────────────
+
+@cli.command()
+@click.option("--fix", is_flag=True, help="자동 수정 가능한 이슈 (dangling index 항목 등) 수정")
+@click.option("--deep", is_flag=True, help="LLM으로 모순 탐지 (느림)")
+@click.option("--debug", is_flag=True, help="raw Claude 응답을 /tmp/llm-wiki-debug.txt에 저장")
+def lint(fix: bool, deep: bool, debug: bool):
+    """wiki 정합성 검사 (dead links, orphans, index drift, 모순)."""
+    from lint import run_lint  # 지연 import
+
+    result = run_lint(fix=fix, deep=deep, debug=debug)
+    if result["total_issues"] > 0:
         sys.exit(1)
 
 

@@ -4,6 +4,8 @@ wiki 탐색 → claude CLI 합성 → output/ 저장 → findings/ 파일링
 """
 
 import re
+import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -57,7 +59,8 @@ def collect_wiki_context(question: str, max_pages: int = 15) -> str:
 _OUTPUT_FORMAT_INSTRUCTIONS = {
     "text": "텍스트 마크다운 파일 (output/<slug>.md)",
     "slides": "Marp 슬라이드 파일 (output/<slug>.marp.md) — marp: true frontmatter 포함",
-    "image": "matplotlib Python 코드 파일 (output/<slug>.py) — plt.savefig() 포함",
+    "diagram": "Mermaid 다이어그램 마크다운 파일 (output/<slug>.md) — ```mermaid 코드블록 포함, flowchart/sequence/ER 등 적절히 선택",
+    "chart": "matplotlib Python 코드 파일 (output/<slug>.py) — plt.savefig('{png_path}') 마지막 줄에 포함, plt.show() 금지",
 }
 
 
@@ -68,15 +71,19 @@ def build_query_prompt(
     output_format: str,
     output_slug: str,
 ) -> str:
-    fmt_desc = _OUTPUT_FORMAT_INSTRUCTIONS.get(output_format, _OUTPUT_FORMAT_INSTRUCTIONS["text"])
     today = datetime.now().strftime("%Y-%m-%d")
+    png_abs = str(vault_path() / "output" / f"{output_slug}.png")
 
     if output_format == "slides":
         output_path = f"output/{output_slug}.marp.md"
-    elif output_format == "image":
+    elif output_format == "chart":
         output_path = f"output/{output_slug}.py"
     else:
+        # text, diagram 모두 .md
         output_path = f"output/{output_slug}.md"
+
+    fmt_raw = _OUTPUT_FORMAT_INSTRUCTIONS.get(output_format, _OUTPUT_FORMAT_INSTRUCTIONS["text"])
+    fmt_desc = fmt_raw.replace("{png_path}", png_abs)
 
     return f"""## 출력 형식 (최우선 규칙)
 
@@ -196,6 +203,31 @@ def write_finding(finding: dict, output_files: list) -> None:
     update_index("findings", slug, finding["description"])
 
 
+# ── 차트 실행 ─────────────────────────────────────────────────────────────────
+
+def execute_chart(py_path: str, png_path: str) -> None:
+    """생성된 matplotlib 코드를 실행하여 PNG를 저장."""
+    proc = subprocess.Popen(
+        [sys.executable, py_path],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    try:
+        _, stderr = proc.communicate(timeout=60)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.communicate()
+        raise RuntimeError(f"차트 실행 타임아웃 (60s): {py_path}")
+
+    if proc.returncode != 0:
+        raise RuntimeError(
+            f"차트 실행 실패 (returncode={proc.returncode}):\n{stderr.decode()}"
+        )
+
+    if not Path(png_path).exists():
+        raise RuntimeError(f"PNG 파일이 생성되지 않았습니다: {png_path}")
+
+
 # ── 메인 오케스트레이터 ───────────────────────────────────────────────────────
 
 def run_query(
@@ -230,6 +262,14 @@ def run_query(
         )
 
     written = write_output_pages(parsed["pages"])
+
+    if output_format == "chart":
+        png_path = str(vault_path() / "output" / f"{output_slug}.png")
+        py_files = [f for f in written if f.endswith(".py")]
+        if py_files:
+            print(f"[query] 차트 실행 중: {py_files[0]}")
+            execute_chart(py_files[0], png_path)
+            written.append(png_path)
 
     findings_created = 0
     for finding in parsed["findings"]:
