@@ -1,0 +1,35 @@
+# Large source files (stored in obsidian-vault/llm-wiki/raw/, not git)
+*.pdf
+*.mp4
+*.mov
+*.zip
+*.tar.gz
+*.pkl
+*.parquet
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Editor
+.idea/
+.vscode/
+*.swp
+
+# Environment
+.env
+.env.local
+
+# OMC state (local only)
+.omc/state/

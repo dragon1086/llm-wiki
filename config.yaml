@@ -1,0 +1,32 @@
+# LLM Wiki — System Configuration
+
+vault_path: /Users/aerok/Desktop/rocky/obsidian-vault/llm-wiki
+raw_dir: raw
+wiki_dir: wiki
+output_dir: output
+
+# Wiki subdirectories
+wiki_subdirs:
+  - concepts
+  - entities
+  - summaries
+  - findings
+
+# Log format
+log_format: "[{date}] [{type}] {message}"
+log_date_format: "%Y-%m-%d %H:%M"
+
+# Slug convention
+slug_style: kebab-case  # lowercase, hyphens only
+
+# Ingest settings
+ingest:
+  max_pages_per_source: 20
+  auto_crossref: true
+  update_index: true
+
+# Lint settings
+lint:
+  staleness_threshold_days: 180
+  auto_fix_orphans: true
+  auto_fix_dead_links: false  # requires human review
