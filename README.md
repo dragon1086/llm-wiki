@@ -202,8 +202,7 @@ bash scripts/setup_launchd.sh --remove  # 해제
 | 버전 | 내용 | 상태 |
 |------|------|------|
 | v1 | BFS 1홉 확장 + 연결도 정렬 + 토큰 예산 | ✅ 완료 |
-| v2 | Obsidian MCP full-text 검색으로 slug 매칭 교체 | 🔜 계획 |
-| v3 | Confidence 태깅 (EXTRACTED/INFERRED) | 🔜 계획 |
+| v2 | Full-text 본문 스캔으로 slug 매칭 교체 (slug 3x + 본문 빈도 1x) | ✅ 완료 |
 
 ---
 
