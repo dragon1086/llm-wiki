@@ -1,4 +1,4 @@
-![LLM Wiki](assets/images/hero-banner.png)
+![LLM Wiki](assets/images/hero-banner.jpg)
 
 # LLM Wiki
 
@@ -22,7 +22,7 @@
 
 ## 작동 방식
 
-![Architecture](assets/images/architecture.png)
+![Architecture](assets/images/architecture.jpg)
 
 | 단계 | 내용 |
 |------|------|
@@ -107,7 +107,7 @@ python scripts/wiki.py lint --deep   # LLM으로 모순 탐지 (느림)
 
 ## Query 개선: BFS 그래프 탐색
 
-![Query Improvement](assets/images/query-improvement.png)
+![Query Improvement](assets/images/query-improvement.jpg)
 
 기존 방식은 질문 키워드와 **slug 이름**만 비교했습니다.
 `"트랜스포머 어텐션"` 질문에 `attention-is-all-you-need` 페이지가 매칭 안 되는 상황이 발생했죠.
