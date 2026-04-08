@@ -1,0 +1,27 @@
+{
+  "enableAllProjectMcpServers": true,
+  "env": {
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(source .venv/bin/activate*)",
+      "Bash(python3 scripts/wiki.py *)",
+      "Bash(python3 scripts/*.py *)",
+      "Bash(cat *)",
+      "Bash(ls *)",
+      "Bash(find /Users/aerok/Desktop/rocky/obsidian-vault/llm-wiki *)",
+      "Edit(*)",
+      "Write(*)",
+      "Read(*)",
+      "mcp__obsidian__*"
+    ],
+    "deny": [],
+    "ask": [
+      "Bash(rm *)",
+      "Bash(pip *)",
+      "Bash(pip3 *)"
+    ]
+  },
+  "plansDirectory": "./tasks"
+}
