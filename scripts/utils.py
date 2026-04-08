@@ -212,6 +212,11 @@ def call_claude(prompt: str, timeout: int = 300, debug: bool = False) -> str:
 _WIKILINK_PATTERN = re.compile(r"\[\[([^\]|]+?)(?:\|[^\]]+)?\]\]")
 
 
+def extract_wikilinks(content: str) -> list[str]:
+    """페이지 본문에서 [[slug]] 링크 목록 추출"""
+    return _WIKILINK_PATTERN.findall(content)
+
+
 def read_wiki_pages(slugs: list) -> dict:
     """
     slug 목록에 해당하는 wiki 페이지 전문 반환.

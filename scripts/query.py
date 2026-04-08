@@ -13,6 +13,7 @@ from utils import (
     append_log,
     call_claude,
     extract_slugs_from_index,
+    extract_wikilinks,
     read_agents_md,
     read_index_md,
     read_wiki_pages,
@@ -24,32 +25,60 @@ from utils import (
 
 # ── Wiki 컨텍스트 수집 ────────────────────────────────────────────────────────
 
-def collect_wiki_context(question: str, max_pages: int = 15) -> str:
+def collect_wiki_context(question: str, char_budget: int = 18000) -> str:
     """
     질문과 관련된 wiki 페이지를 읽어 컨텍스트 문자열로 반환.
-    1. index.md 전문 포함
-    2. 질문 키워드와 매칭되는 slug 우선 선택
-    3. max_pages 개 페이지 전문 포함
+
+    3단계 전략 (graphify BFS 패턴):
+    1. 키워드 매칭으로 시드 slug 선택 (상위 10개)
+    2. 시드 페이지의 [[wikilinks]] 따라 1홉 이웃 확장
+    3. 연결도(wikilink 수) 높은 순 정렬 후 char_budget 내 포함
     """
     index_content = read_index_md()
     all_slugs = extract_slugs_from_index()
+    valid_slugs = set(all_slugs)
 
-    # 질문 키워드 기반 slug 순위 결정
+    # 1단계: 키워드 기반 시드 선택
     question_words = set(re.findall(r"\w+", question.lower()))
     scored: list[tuple[int, str]] = []
     for slug in all_slugs:
         slug_words = set(re.split(r"[-_]", slug.lower()))
         score = len(question_words & slug_words)
         scored.append((score, slug))
-
     scored.sort(key=lambda x: -x[0])
-    selected_slugs = [slug for _, slug in scored[:max_pages]]
 
-    pages = read_wiki_pages(selected_slugs)
+    seed_slugs = [s for sc, s in scored[:10] if sc > 0] or [s for _, s in scored[:10]]
+    seed_set = set(seed_slugs)
 
+    # 2단계: BFS 1홉 확장 — 시드 페이지의 [[wikilinks]] 수집
+    seed_pages = read_wiki_pages(seed_slugs)
+    neighbors: set[str] = set()
+    for content in seed_pages.values():
+        for link in extract_wikilinks(content):
+            if link in valid_slugs and link not in seed_set:
+                neighbors.add(link)
+
+    # 3단계: 후보 전체 읽기 + 연결도 기반 정렬
+    all_pages = {**seed_pages, **read_wiki_pages(list(neighbors))}
+
+    def connectivity(content: str) -> int:
+        return len(extract_wikilinks(content))
+
+    ranked = sorted(
+        all_pages.items(),
+        key=lambda kv: (1 if kv[0] in seed_set else 0, connectivity(kv[1])),
+        reverse=True,
+    )
+
+    # 4단계: char_budget 내에서 페이지 포함
     parts = [f"## wiki/index.md\n{index_content}"]
-    for slug, content in pages.items():
-        parts.append(f"## wiki page: {slug}\n{content}")
+    used = len(parts[0])
+    for slug, content in ranked:
+        entry = f"## wiki page: {slug}\n{content}"
+        if used + len(entry) > char_budget:
+            break
+        parts.append(entry)
+        used += len(entry)
 
     return "\n\n---\n\n".join(parts)
 
