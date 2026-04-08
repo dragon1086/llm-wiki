@@ -19,10 +19,13 @@ llm-wiki/                       ← 이 repo (시스템 코드)
     ├── ingest.py               ← raw/ → wiki 컴파일
     ├── query.py                ← wiki 탐색 + 합성
     ├── lint.py                 ← 정합성 검사
-    └── utils.py                ← 공통 유틸
+    ├── utils.py                ← 공통 유틸
+    └── ingest_trends.sh        ← last30days 출력물 → raw/trending/ 복사 + ingest
 
 obsidian-vault/llm-wiki/        ← Obsidian vault (데이터)
-├── raw/                        ← 소스 투하 (Web Clipper, 수동)
+├── raw/
+│   ├── trending/               ← last30days 트렌드 보고서 투하
+│   └── ...                     ← Web Clipper, 수동 소스
 ├── wiki/
 │   ├── index.md                ← 카탈로그 (LLM 자동 유지)
 │   ├── log.md                  ← 운영 로그
@@ -179,6 +182,46 @@ wikilink
 slug
 ```
 
+### trends — 플랫폼 트렌드 자동 수집
+
+[last30days](https://github.com/mvanhorn/last30days-skill) 스킬로 Reddit, X/Twitter, YouTube, Hacker News 등 주요 플랫폼의 최근 30일 트렌드를 수집해 wiki로 인제스트합니다.
+
+#### 전제 조건
+
+```bash
+# last30days 스킬 설치 (최초 1회)
+git clone https://github.com/mvanhorn/last30days-skill.git ~/.claude/skills/last30days
+```
+
+#### 사용법
+
+**Step 1 — 트렌드 수집** (Claude Code 세션에서)
+
+```
+/last30days LLM 최신 트렌드
+/last30days Claude Code 프롬프팅 기법 --deep
+/last30days reasoning model 비교 --days=7
+```
+
+결과 마크다운이 `~/Documents/Last30Days/`에 자동 저장됩니다.
+
+**Step 2 — vault 인제스트** (터미널에서)
+
+```bash
+# 최신 보고서 1개 → raw/trending/ 복사 + ingest
+bash scripts/ingest_trends.sh
+
+# 오늘 생성된 보고서 전체
+bash scripts/ingest_trends.sh --all
+
+# 복사만 (ingest는 나중에 수동으로)
+bash scripts/ingest_trends.sh --copy-only
+```
+
+Step 2 완료 후 `wiki/summaries/`, `concepts/`, `entities/`가 자동 갱신됩니다.
+
+---
+
 ### watch — 자동 ingest
 
 ```bash
@@ -215,20 +258,38 @@ python scripts/wiki.py list-raw   # raw/ 파일 목록 + ingest 여부
 
 ## 워크플로우 예시
 
+### A. 웹 아티클 수집
+
 ```
 1. 웹 페이지 읽다가 흥미로운 아티클 발견
    → Web Clipper로 raw/ 에 저장
 
-2. wiki ingest --all
+2. python scripts/wiki.py ingest --all
    → LLM이 요약·개념·엔티티 페이지 자동 생성
 
 3. Obsidian에서 Graph View로 지식 그래프 탐색
 
-4. wiki query "이 개념이 X와 어떻게 연결되나?" --diagram
+4. python scripts/wiki.py query "이 개념이 X와 어떻게 연결되나?" --diagram
    → 다이어그램 output/ 저장
 
-5. 주기적으로 wiki lint --fix
+5. 주기적으로 python scripts/wiki.py lint --fix
    → 깨진 링크, 누락 항목 정리
+```
+
+### B. 플랫폼 트렌드 수집 (last30days)
+
+```
+1. Claude Code에서 트렌드 수집
+   /last30days LLM 최신 트렌드 --deep
+   → ~/Documents/Last30Days/llm-latest-trends.md 저장
+
+2. bash scripts/ingest_trends.sh
+   → raw/trending/ 복사 + wiki 자동 인제스트
+
+3. Obsidian에서 새로 생성된 summaries/, concepts/ 확인
+
+4. python scripts/wiki.py query "이번 주 LLM 핵심 트렌드 요약" --slides
+   → Marp 슬라이드로 브리핑 생성
 ```
 
 ---

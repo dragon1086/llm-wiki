@@ -68,6 +68,43 @@ python3 scripts/wiki.py list-raw
 - `collect_wiki_context()` in `query.py` — 현재 slug 키워드 매칭; obsidian MCP로 교체 가능
 - `config.yaml` — vault_path, lint 임계값 등 운영 파라미터
 
+## 트렌드 자동 수집 (last30days)
+
+`/last30days` 스킬로 플랫폼 트렌드를 수집하고 wiki로 자동 인제스트합니다.
+
+### 워크플로우
+
+```
+/last30days [주제]          ← Claude Code에서 실행
+       ↓
+~/Documents/Last30Days/*.md  ← 스킬이 자동 저장
+       ↓
+bash scripts/ingest_trends.sh  ← vault raw/trending/ 복사 + ingest
+       ↓
+wiki/summaries/, concepts/, entities/ 갱신
+```
+
+### 사용법
+
+```bash
+# 1. Claude Code에서 트렌드 수집
+/last30days LLM 최신 트렌드
+/last30days Claude Code 프롬프팅 기법 --deep
+/last30days reasoning model 비교 --days=7
+
+# 2. vault로 복사 + ingest (터미널에서)
+bash scripts/ingest_trends.sh           # 최신 파일 1개
+bash scripts/ingest_trends.sh --all     # 오늘 생성 파일 전체
+bash scripts/ingest_trends.sh --copy-only  # 복사만 (ingest 나중에)
+```
+
+### 출력 위치
+
+- last30days 원본: `~/Documents/Last30Days/`
+- vault 투하 지점: `raw/trending/`
+
+---
+
 ## Slash Commands
 
 | 커맨드 | 기능 |
@@ -76,6 +113,7 @@ python3 scripts/wiki.py list-raw
 | `/query` | vault 검색 + 질의 응답 |
 | `/lint` | wiki 정합성 검사 |
 | `/wiki-status` | wiki 현황 요약 |
+| `/last30days [주제]` | 트렌드 수집 → `~/Documents/Last30Days/` 저장 |
 
 ## 운영 원칙
 
