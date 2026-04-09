@@ -41,6 +41,10 @@ def ingest(source_file: Optional[str], ingest_all: bool, debug: bool):
     """소스 파일을 wiki로 컴파일합니다."""
     from ingest import run_ingest  # 지연 import (CLI 응답성 유지)
 
+    # 인수 없으면 --all 로 동작
+    if not source_file and not ingest_all:
+        ingest_all = True
+
     if ingest_all:
         raw_files = list_raw_files()
         pending = [f for f in raw_files if not is_ingested(f.stem)]

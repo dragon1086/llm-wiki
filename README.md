@@ -44,6 +44,13 @@
 git clone <repo-url> && cd llm-wiki
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+chmod +x wiki
+```
+
+전역 명령으로 등록하면 어디서든 `wiki` 명령으로 실행 가능합니다:
+
+```bash
+echo 'alias wiki="/path/to/llm-wiki/wiki"' >> ~/.zshrc && source ~/.zshrc
 ```
 
 ### 2. Obsidian vault 설정
@@ -63,10 +70,10 @@ vault_path: /Users/<your-name>/path/to/obsidian-vault/llm-wiki
 
 ```bash
 # 아무 마크다운 파일을 raw/에 넣고
-python scripts/wiki.py ingest --all
+./wiki ingest
 
 # 결과 확인
-python scripts/wiki.py status
+./wiki status
 ```
 
 ---
@@ -76,9 +83,9 @@ python scripts/wiki.py status
 ### ingest — 소스 → wiki
 
 ```bash
-python scripts/wiki.py ingest raw/article.md    # 단일 파일
-python scripts/wiki.py ingest --all             # 미처리 전체
-python scripts/wiki.py watch                    # raw/ 감시 (자동 ingest)
+./wiki ingest                       # raw/ 미처리 파일 전체 (기본값)
+./wiki ingest raw/article.md        # 단일 파일
+./wiki watch                        # raw/ 감시 (자동 ingest)
 ```
 
 소스 1개당 생성되는 페이지:
@@ -89,18 +96,19 @@ python scripts/wiki.py watch                    # raw/ 감시 (자동 ingest)
 ### query — 질문하기
 
 ```bash
-python scripts/wiki.py query "트랜스포머 어텐션이 왜 O(n²)인가?"
-python scripts/wiki.py query "이 개념들 비교해줘" --slides    # Marp 슬라이드
-python scripts/wiki.py query "관계도 그려줘" --diagram        # Mermaid 다이어그램
-python scripts/wiki.py query "분포 보여줘" --chart            # matplotlib PNG
+./wiki query "트랜스포머 어텐션이 왜 O(n²)인가?"
+./wiki query "이 개념들 비교해줘" --slides       # Marp 슬라이드
+./wiki query "관계도 그려줘" --diagram           # Mermaid 다이어그램
+./wiki query "분포 보여줘" --chart               # matplotlib PNG
+./wiki query "설계 정리해줘" --diagram --archive # 결과를 wiki에 자동 편입
 ```
 
 ### lint — wiki 건강 검사
 
 ```bash
-python scripts/wiki.py lint          # dead links, orphans, index 불일치 탐지
-python scripts/wiki.py lint --fix    # 자동 수정 가능한 항목 수정
-python scripts/wiki.py lint --deep   # LLM으로 모순 탐지 (느림)
+./wiki lint          # dead links, orphans, index 불일치 탐지
+./wiki lint --fix    # 자동 수정 가능한 항목 수정
+./wiki lint --deep   # LLM으로 모순 탐지 (느림)
 ```
 
 ---
@@ -162,10 +170,10 @@ bash scripts/ingest_trends.sh --copy-only  # 복사만
 
 ```bash
 # 1. 자료 넣은 직후 바로 query
-python scripts/wiki.py query "방금 읽은 자료의 핵심을 기존 지식과 비교해줘"
+./wiki query "방금 읽은 자료의 핵심을 기존 지식과 비교해줘"
 
 # 2. 2주에 1번 lint
-python scripts/wiki.py lint --fix
+./wiki lint --fix
 
 # 3. 도메인 3개에 집중 (넓게 말고 깊게)
 ```
