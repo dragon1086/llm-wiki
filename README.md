@@ -45,6 +45,7 @@ git clone <repo-url> && cd llm-wiki
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 chmod +x wiki
+python3 scripts/setup.py   # vault 경로 설정 + 디렉토리 생성
 ```
 
 전역 명령으로 등록하면 어디서든 `wiki` 명령으로 실행 가능합니다:

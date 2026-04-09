@@ -28,7 +28,8 @@ obsidian-vault/llm-wiki/   ← vault (config.yaml의 vault_path)
 
 ## Vault 경로
 
-`config.yaml`의 `vault_path`: `/Users/aerok/Desktop/rocky/obsidian-vault/llm-wiki`
+`config.yaml`의 `vault_path` 값을 사용합니다 (`~` 자동 확장 지원).
+초기 설정: `python3 scripts/setup.py` 실행 후 `config.yaml` 생성됩니다.
 
 ## Obsidian MCP 활용
 
@@ -43,22 +44,12 @@ obsidian-vault/llm-wiki/   ← vault (config.yaml의 vault_path)
 ## 파이프라인 실행
 
 ```bash
-# venv 활성화 필수
-source .venv/bin/activate
-
-# 소스 ingest
-python3 scripts/wiki.py ingest raw/<file>.md
-python3 scripts/wiki.py ingest --all
-
-# 질의
-python3 scripts/wiki.py query "질문" [--slides|--diagram|--chart]
-
-# 정합성 검사
-python3 scripts/wiki.py lint [--fix] [--deep]
-
-# 현황
-python3 scripts/wiki.py status
-python3 scripts/wiki.py list-raw
+./wiki ingest              # raw/ 미처리 전체
+./wiki ingest raw/<file>   # 단일 파일
+./wiki query "질문" [--slides|--diagram|--chart|--archive]
+./wiki lint [--fix] [--deep]
+./wiki status
+./wiki list-raw
 ```
 
 ## 코드 수정 가이드라인

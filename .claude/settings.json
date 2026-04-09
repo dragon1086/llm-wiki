@@ -10,11 +10,12 @@
       "Bash(python3 scripts/*.py *)",
       "Bash(cat *)",
       "Bash(ls *)",
-      "Bash(find /Users/aerok/Desktop/rocky/obsidian-vault/llm-wiki *)",
+      "Bash(find *)",
       "Edit(*)",
       "Write(*)",
       "Read(*)",
-      "mcp__obsidian__*"
+      "mcp__obsidian__*",
+      "Bash(./wiki *)"
     ],
     "deny": [],
     "ask": [

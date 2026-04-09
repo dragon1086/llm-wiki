@@ -22,22 +22,22 @@ def load_config() -> dict:
 
 
 def vault_path() -> Path:
-    return Path(load_config()["vault_path"])
+    return Path(load_config()["vault_path"]).expanduser()
 
 
 def raw_dir() -> Path:
     cfg = load_config()
-    return Path(cfg["vault_path"]) / cfg["raw_dir"]
+    return Path(cfg["vault_path"]).expanduser() / cfg["raw_dir"]
 
 
 def wiki_dir() -> Path:
     cfg = load_config()
-    return Path(cfg["vault_path"]) / cfg["wiki_dir"]
+    return Path(cfg["vault_path"]).expanduser() / cfg["wiki_dir"]
 
 
 def output_dir() -> Path:
     cfg = load_config()
-    return Path(cfg["vault_path"]) / cfg["output_dir"]
+    return Path(cfg["vault_path"]).expanduser() / cfg["output_dir"]
 
 
 # ── 텍스트 유틸 ──────────────────────────────────────────────────────────────

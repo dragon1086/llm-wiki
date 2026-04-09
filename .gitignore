@@ -34,3 +34,9 @@ build/
 # OMC state (local only)
 .omc/state/
 .omc/
+
+# User-specific config (copy from config.yaml.example and edit)
+config.yaml
+
+# Claude Code local session state
+.claude/settings.local.json
