@@ -232,5 +232,14 @@ def list_raw():
     click.echo(f"\n  ✓ = 처리됨  ○ = 미처리\n")
 
 
+# ── discord ───────────────────────────────────────────────────────────────────
+
+@cli.command()
+def discord():
+    """Discord 봇을 실행합니다. DISCORD_TOKEN 환경변수 필요."""
+    from discord_bot import main  # type: ignore[import]  # 지연 import (scripts/ 경로)
+    main()
+
+
 if __name__ == "__main__":
     cli()

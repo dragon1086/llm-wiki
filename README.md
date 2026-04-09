@@ -192,6 +192,43 @@ Web Clipper 설정: Vault → `llm-wiki`, Default location → `raw/`
 
 ---
 
+## Discord 봇 연동
+
+Discord에서 `!query`, `!ingest`, `!status` 명령으로 wiki를 사용할 수 있습니다.
+
+### 설정
+
+1. [Discord Developer Portal](https://discord.com/developers/applications)에서 Bot 생성
+2. Bot Token 복사 → `.env` 파일에 저장:
+
+```bash
+cp .env.example .env
+# .env 편집: DISCORD_TOKEN=your_token_here
+```
+
+3. Bot을 서버에 초대 (OAuth2 → bot scope → Send Messages, Attach Files 권한)
+
+### 실행
+
+```bash
+./wiki discord
+```
+
+### 명령어
+
+| 명령어 | 설명 |
+|--------|------|
+| `!query <질문>` | wiki 탐색 후 답변 |
+| `!query <질문> --diagram` | Mermaid 다이어그램 |
+| `!query <질문> --chart` | 차트 PNG 이미지 전송 |
+| `!query <질문> --archive` | 결과를 wiki에 자동 편입 |
+| `!ingest` | raw/ 미처리 파일 전체 ingest |
+| `!status` | wiki 현황 요약 |
+
+특정 채널에서만 동작하게 하려면 `.env`에 `DISCORD_CHANNEL_IDS=채널ID` 추가.
+
+---
+
 ## macOS 자동 실행 (launchd)
 
 로그인 시 `raw/` 감시가 자동 시작됩니다:
