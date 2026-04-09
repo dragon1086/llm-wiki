@@ -227,9 +227,66 @@ cp .env.example .env
 
 특정 채널에서만 동작하게 하려면 `.env`에 `DISCORD_CHANNEL_IDS=채널ID` 추가.
 
+### macOS 상시 실행 (launchd)
+
+Mac 로그인 시 봇이 자동으로 켜지도록 launchd에 등록합니다.
+
+**1. plist 파일 생성** (`~/Library/LaunchAgents/com.llmwiki.discord.plist`):
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.llmwiki.discord</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/path/to/llm-wiki/wiki</string>
+    <string>discord</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/path/to/llm-wiki</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>DISCORD_TOKEN</key>
+    <string>your_discord_bot_token</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/tmp/llm-wiki-discord.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/llm-wiki-discord.log</string>
+</dict>
+</plist>
+```
+
+> `/path/to/llm-wiki`를 실제 경로로 교체하세요.
+
+**2. 등록 및 시작**:
+
+```bash
+launchctl load ~/Library/LaunchAgents/com.llmwiki.discord.plist
+
+# 로그 확인
+tail -f /tmp/llm-wiki-discord.log
+```
+
+**3. 중지 / 제거**:
+
+```bash
+launchctl unload ~/Library/LaunchAgents/com.llmwiki.discord.plist
+```
+
+> `KeepAlive: true`로 설정되어 있어 봇이 예기치 않게 종료되면 자동으로 재시작됩니다.
+
 ---
 
-## macOS 자동 실행 (launchd)
+## macOS 자동 실행 (launchd) — raw/ 감시
 
 로그인 시 `raw/` 감시가 자동 시작됩니다:
 
