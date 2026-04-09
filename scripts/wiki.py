@@ -92,10 +92,12 @@ def _run_single(run_ingest_fn, source_file: str, debug: bool = False):
 @click.option("--diagram", "output_format", flag_value="diagram", help="Mermaid 다이어그램으로 출력")
 @click.option("--chart", "output_format", flag_value="chart", help="matplotlib 차트 코드 생성 + PNG 저장")
 @click.option("--text", "output_format", flag_value="text", default=True, help="텍스트 마크다운으로 출력 (기본)")
+@click.option("--archive", is_flag=True, help="output/ 결과를 raw/로 복사 후 wiki에 자동 ingest")
 @click.option("--debug", is_flag=True, help="raw Claude 응답을 /tmp/llm-wiki-debug.txt에 저장")
-def query(question: str, output_format: str, debug: bool):
+def query(question: str, output_format: str, archive: bool, debug: bool):
     """wiki를 탐색하여 질문에 답합니다."""
     from query import run_query  # 지연 import
+    import shutil
 
     try:
         result = run_query(question, output_format=output_format, debug=debug)
@@ -103,6 +105,19 @@ def query(question: str, output_format: str, debug: bool):
         if result["findings_created"]:
             click.echo(f"✓ Findings 파일링: {result['findings_created']}개")
         click.echo(f"  로그: {result['log_message']}")
+
+        if archive:
+            from ingest import run_ingest
+            raw = raw_dir()
+            md_files = [f for f in result["output_files"] if f.endswith(".md")]
+            if not md_files:
+                click.echo("  [archive] ingest할 .md 파일이 없습니다.")
+            for src in md_files:
+                dest = raw / Path(str(src)).name
+                shutil.copy2(src, dest)
+                click.echo(f"\n[archive] raw/{dest.name} 복사 완료 → ingest 시작")
+                _run_single(run_ingest, str(dest), debug=debug)
+
     except RuntimeError as e:
         click.echo(f"✗ 오류: {e}", err=True)
         sys.exit(1)
@@ -125,7 +140,7 @@ def watch(debug: bool):
         def on_created(self, event):
             if event.is_directory:
                 return
-            path = Path(event.src_path)
+            path = Path(str(event.src_path))
             if path.suffix != ".md":
                 return
             # 잠깐 대기 — 파일 쓰기 완료 보장
