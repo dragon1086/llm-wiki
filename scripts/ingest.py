@@ -4,6 +4,7 @@ raw/ 소스 파일 → claude CLI → wiki 페이지 생성/갱신
 """
 
 import re
+import sys
 from pathlib import Path
 
 from utils import (
@@ -84,9 +85,16 @@ _FILE_PATTERN = re.compile(
     r"===FILE:\s*(.+?)===(.*?)===END===",
     re.DOTALL,
 )
+# Claude가 파일명에 HTML 태그/공백 등을 환각하는 사례 차단 — 허용 경로 화이트리스트
+_ALLOWED_PATH = re.compile(
+    r"^wiki/(summaries|entities|concepts|findings)/[a-z0-9][a-z0-9_-]*\.md$"
+)
 _INDEX_PATTERN = re.compile(
     r"===INDEX_UPDATE:\s*(.+?)\s*\|\s*(.+?)\s*\|\s*(.+?)==="
 )
+# INDEX_UPDATE의 slug도 파일명 규약과 같은 형식이어야 — sanitizer가 차단한 파일이
+# index에 남는 dangling 방지
+_ALLOWED_SLUG = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 _LOG_PATTERN = re.compile(r"===LOG:\s*(.+?)===")
 
 
@@ -99,13 +107,20 @@ def parse_claude_output(output: str) -> dict:
     for m in _FILE_PATTERN.finditer(output):
         path = m.group(1).strip()
         content = m.group(2).strip()
+        if not _ALLOWED_PATH.match(path):
+            print(f"⚠ 비정상 경로 스킵: {path!r}", file=sys.stderr)
+            continue
         pages.append({"path": path, "content": content})
 
     index_updates = []
     for m in _INDEX_PATTERN.finditer(output):
+        slug = m.group(2).strip()
+        if not _ALLOWED_SLUG.match(slug):
+            print(f"⚠ 비정상 slug 스킵 (INDEX_UPDATE): {slug!r}", file=sys.stderr)
+            continue
         index_updates.append({
             "section": m.group(1).strip().lower(),  # → summaries / concepts / ...
-            "slug": m.group(2).strip(),
+            "slug": slug,
             "description": m.group(3).strip(),
         })
 
@@ -173,7 +188,7 @@ def run_ingest(source_file: str, debug: bool = False) -> dict:
     )
 
     print(f"[ingest] {source_filename} 처리 중... (claude CLI 호출)")
-    raw_output = call_claude(prompt, debug=debug)
+    raw_output = call_claude(prompt, timeout=900, debug=debug)
 
     parsed = parse_claude_output(raw_output)
 

@@ -58,18 +58,35 @@ confidence: high | medium | low
 ```
 
 ### 3. Entity (`wiki/entities/<slug>.md`)
-인물, 조직, 도구, 제품, 데이터셋 등 고유 명사.
+인물, 조직, 도구, 제품, 데이터셋, **마이크로서비스**, **DB 테이블** 등 고유 명사.
 
 ```yaml
 ---
 type: entity
-entity_type: person | org | tool | dataset | paper | other
+entity_type: person | org | tool | dataset | paper | service | db_table | other
 title: "<엔티티명>"
 aliases: [<별칭>]
 related: [<entity_slug1>, <concept_slug1>]
 sources: [<summary_slug1>]
 last_updated: "YYYY-MM-DD"
 ---
+```
+
+**`entity_type: service`** 의 경우 추가 필드:
+```yaml
+service:
+  language: kotlin | java
+  spring_boot_version: "2.5.7"
+  package: "com.makers.claim"
+  repo: "git@github.com:<org>/<repo>.git"
+  team: "<팀명>"
+```
+
+**`entity_type: db_table`** 의 경우:
+```yaml
+db_table:
+  schema: "<schema_name>"
+  owner_service: "<service_slug>"
 ```
 
 ### 4. Finding (`wiki/findings/<slug>.md`)
@@ -85,6 +102,56 @@ sources: [<summary_slug1>]
 output_files: [<output/파일명>]
 ---
 ```
+
+---
+
+## Service Analysis Protocol (마이크로서비스 분석)
+
+Java/Kotlin Spring Boot 마이크로서비스를 분석해 wiki에 적재하는 전용 워크플로우.
+
+### 디렉토리 규약
+
+```
+obsidian-vault/llm-wiki/
+└── raw/
+    ├── services/            ← 서비스 분석 markdown 전용
+    │   ├── claim2-service.md
+    │   ├── order-service.md
+    │   └── payment-service.md
+    └── <기타 일반 아티클>.md
+```
+
+`raw/services/<service>.md` 파일은 [`prompts/service-analysis/`](../prompts/service-analysis/) skill bundle 의 출력 형식을 따라야 한다. 진입점은 [`orchestrator.md`](../prompts/service-analysis/orchestrator.md).
+
+### 서비스 ingest 시 특별 규칙
+
+1. **서비스 엔티티 1개 생성**: `entities/<service>.md` (entity_type: service)
+2. **참조된 다른 서비스 엔티티 자동 upsert**: 분석문의 `[[<other-service>]]` 링크마다 entity 페이지 생성 (미존재 시 "(분석 대기)" 스텁)
+3. **DB 테이블 엔티티**: `[[<table_name>]]` 링크마다 entity_type: db_table 으로 생성
+4. **비즈니스 플로우 → concepts**: "클레임 승인", "환불 처리" 등 주요 플로우를 concepts/로 추출
+5. **Summary는 서비스 카드 요약**: 원본보다 짧지만, Top 3 책임과 주요 의존 서비스 목록 포함
+
+### 크로스 서비스 그래프 형성
+
+여러 서비스를 순차 ingest하면 Obsidian Graph View에서 다음이 자동 형성됨:
+
+```
+[[claim2-service]] ──calls──▶ [[order-service]]
+                 │
+                 ├──calls──▶ [[payment-service]]
+                 │
+                 └──publishes──▶ [[claim.ex]] (RabbitMQ exchange 엔티티)
+```
+
+### 크로스 서비스 Query 예시
+
+```bash
+python scripts/wiki.py query "claim2-service 의존성 맵" --diagram
+python scripts/wiki.py query "주문 취소 → 클레임 흐름" --diagram
+python scripts/wiki.py query "payment-service 장애 시 영향 범위"
+```
+
+쿼리는 서비스 엔티티 간 wikilink를 따라 탐색하며, 결과는 `findings/`에 자동 파일링된다.
 
 ---
 

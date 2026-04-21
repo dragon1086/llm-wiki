@@ -252,7 +252,7 @@ def run_query(
     )
 
     print(f"[query] '{question[:50]}...' 처리 중... (claude CLI 호출)")
-    raw_output = call_claude(prompt, debug=debug)
+    raw_output = call_claude(prompt, timeout=900, debug=debug)
 
     parsed = parse_query_output(raw_output)
 

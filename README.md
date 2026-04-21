@@ -233,6 +233,66 @@ python scripts/wiki.py list-raw   # raw/ 파일 목록 + ingest 여부
 
 ---
 
+## 마이크로서비스 분석 워크플로우
+
+Java/Kotlin Spring Boot 마이크로서비스들의 **비즈니스 로직 + 서비스 간 호출 그래프**를 wiki에 축적하는 전용 흐름. Graphify와 조합해 사용.
+
+### 1. 대상 서비스 repo에서 Graphify 실행
+
+```bash
+cd ~/workspace/<service-repo>
+claude
+/graphify                   # graphify-out/ 생성 (graph.json + GRAPH_REPORT.md)
+```
+
+### 2. 서비스 분석 markdown 생성
+
+Claude Code 세션에서 [`prompts/service-analysis/orchestrator.md`](./prompts/service-analysis/orchestrator.md) 본문 전체를 복사·붙여넣기. `{SERVICE_SLUG}`만 실제 서비스명으로 치환.
+
+오케스트레이터가 `dimensions/` 내 12개 관점(identity · data-ownership · api-inbound · transactions · outbound-calls · messaging · scheduling · distributed-locking · retry-failure · infra · domain-logic · forensics)을 순차 적용하며, **"왜 이렇게 짰을까?"** 포렌식 섹션으로 마무리한다.
+
+Claude가 생성한 markdown을 저장:
+
+```bash
+# 예시: claim2-service 분석
+# Claude 출력을 복사해서 저장
+mkdir -p ~/workspace/obsidian-vault/llm-wiki/raw/services
+# → raw/services/claim2-service.md 로 저장
+```
+
+### 3. wiki에 ingest
+
+```bash
+cd ~/workspace/llm-wiki
+python scripts/wiki.py ingest raw/services/claim2-service.md
+```
+
+이 단계에서 자동으로 생성되는 것:
+- `entities/claim2-service.md` — 서비스 엔티티 (entity_type: service)
+- `entities/<referenced-service>.md` — 호출 대상 서비스들의 엔티티 (스텁 포함)
+- `entities/<db-table>.md` — 언급된 DB 테이블 엔티티
+- `concepts/<business-flow>.md` — 주요 비즈니스 플로우 개념
+- `summaries/claim2-service.md` — 요약
+- 모든 페이지에 `[[wikilink]]` 자동 삽입
+
+### 4. 여러 서비스 반복 후 크로스 탐색
+
+```bash
+# 서비스별로 위 단계 반복 (order-service, payment-service, ...)
+python scripts/wiki.py ingest --all
+
+# 서비스 간 흐름 질의
+python scripts/wiki.py query "claim2-service가 의존하는 서비스들의 전체 맵" --diagram
+python scripts/wiki.py query "주문 취소 → 클레임 → 환불 end-to-end 플로우" --diagram
+python scripts/wiki.py query "order-service 장애 시 영향받는 서비스"
+```
+
+Obsidian Graph View에서 `entity_type: service` 엔티티들만 필터링하면 **팀 마이크로서비스 호출 맵**이 시각적으로 형성됨.
+
+> 상세 스키마와 규약: [AGENTS.md — Service Analysis Protocol](./AGENTS.md#service-analysis-protocol-마이크로서비스-분석)
+
+---
+
 ## 운영 원칙
 
 - **LLM이 쓰고, 사람은 읽는다** — wiki 파일 직접 편집 최소화
